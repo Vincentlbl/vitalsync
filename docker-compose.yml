@@ -1,0 +1,43 @@
+services:
+
+  backend:
+    build: ./backend
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - DATABASE_URL=${DATABASE_URL}
+    networks:
+      - vitalsync-net
+    depends_on:
+      - database
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    networks:
+      - vitalsync-net
+    depends_on:
+      - backend
+
+  database:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - vitalsync-net
+
+# Réseau bridge dédié : les conteneurs s'isolent du réseau Docker par défaut et
+# communiquent entre eux par leur nom de service (DNS interne Docker).
+networks:
+  vitalsync-net:
+    driver: bridge
+
+# Volume nommé : les données PostgreSQL survivent aux arrêts/redémarrages des conteneurs.
+volumes:
+  postgres-data:
