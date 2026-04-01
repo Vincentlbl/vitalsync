@@ -1,0 +1,27 @@
+# Dépendances Node.js : reconstruites via npm install, ne doivent pas être versionnées
+node_modules/
+
+# Fichier d'environnement : contient des secrets (mots de passe, tokens), jamais commité
+.env
+
+# Logs : générés à l'exécution, sans valeur dans le versionnement
+*.log
+npm-debug.log*
+
+# Répertoire de build/dist : artefacts générés, pas du source
+dist/
+build/
+
+# Couverture de tests Jest : rapport généré automatiquement
+coverage/
+
+# Fichiers système macOS
+.DS_Store
+
+# Fichiers système Windows
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
