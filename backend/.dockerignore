@@ -1,0 +1,17 @@
+# Dépendances : reconstruites dans l'image via npm ci
+node_modules/
+
+# Fichiers d'environnement : ne jamais inclure dans une image Docker
+.env
+.env.*
+
+# Logs
+*.log
+npm-debug.log*
+
+# Métadonnées Git
+.git/
+.gitignore
+
+# Dockerfile lui-même
+Dockerfile
