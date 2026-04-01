@@ -6,7 +6,10 @@ app.get("/health", (req, res) => {
 });
 
 app.get("/api/activities", (req, res) => {
-  res.json([{ id: 1, activity: "running", duration: 30 }]);
+  res.json([
+    { id: 1, activity: "running", duration: 30 },
+    { id: 2, activity: "cycling", distance: 15 },
+  ]);
 });
 
 app.get("/api/users", (req, res) => {
