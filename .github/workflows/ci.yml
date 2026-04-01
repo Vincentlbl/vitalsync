@@ -1,0 +1,120 @@
+name: CI/CD Pipeline
+
+# ── Déclencheurs ────────────────────────────────────────────────────────────
+# Push sur develop → lance toute la pipeline (lint, build, staging)
+# Pull Request vers main → lint + tests uniquement (pas de push registry ni de déploiement)
+on:
+  push:
+    branches:
+      - develop
+  pull_request:
+    branches:
+      - main
+
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/vitalsync-backend
+  FRONTEND_IMAGE: ghcr.io/${{ github.repository_owner }}/vitalsync-frontend
+
+# ── Job 1 : Lint & Tests ─────────────────────────────────────────────────────
+jobs:
+  lint-and-test:
+    name: Lint & Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Installation des dépendances
+        working-directory: backend
+        run: npm ci
+
+      - name: Lint ESLint
+        working-directory: backend
+        run: npm run lint
+
+      - name: Tests unitaires Jest
+        working-directory: backend
+        run: npm test
+
+# ── Job 2 : Build & Push Docker ──────────────────────────────────────────────
+  build-and-push:
+    name: Build & Push Docker images
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+    # Uniquement sur push (pas sur PR) pour ne pas exposer les secrets à des forks
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Connexion à GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push image backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+            ${{ env.BACKEND_IMAGE }}:latest
+
+      - name: Build & push image frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+            ${{ env.FRONTEND_IMAGE }}:latest
+
+# ── Job 3 : Déploiement staging ───────────────────────────────────────────────
+  deploy-staging:
+    name: Deploy Staging
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Création du fichier .env
+        run: |
+          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" > .env
+          echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}" >> .env
+          echo "POSTGRES_USER=${{ secrets.POSTGRES_USER }}" >> .env
+          echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env
+
+      - name: Démarrage des services docker-compose
+        run: docker compose up -d
+
+      - name: Health check du back-end (10 tentatives, 3 s d'intervalle)
+        run: |
+          for i in {1..10}; do
+            if curl -sf http://localhost:3000/health; then
+              echo "Health check OK"
+              exit 0
+            fi
+            echo "Tentative $i échouée, nouvelle tentative dans 3 s..."
+            sleep 3
+          done
+          echo "Health check échoué après 10 tentatives — pipeline en erreur"
+          exit 1
