@@ -13,8 +13,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/vitalsync-backend
-  FRONTEND_IMAGE: ghcr.io/${{ github.repository_owner }}/vitalsync-frontend
+  BACKEND_IMAGE: ghcr.io/vincentlbl/vitalsync-backend
+  FRONTEND_IMAGE: ghcr.io/vincentlbl/vitalsync-frontend
 
 # ── Job 1 : Lint & Tests ─────────────────────────────────────────────────────
 jobs:
